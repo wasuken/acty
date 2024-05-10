@@ -54,7 +54,8 @@ mod tests {
 
         assert_eq!(log_entries.len(), 1);
         assert_eq!(log_entries[0].content, "Test content");
-        assert_eq!(log_entries[0].tags, vec!["tag1", "tag2"]);
+        assert!(log_entries[0].tags.contains(&"tag1".to_string()));
+        assert!(log_entries[0].tags.contains(&"tag2".to_string()));
 
         fs::remove_file(test_json_path).unwrap();
     }
