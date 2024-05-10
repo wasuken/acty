@@ -8,7 +8,7 @@ pub fn list_logs(config: &Config, date: Option<String>, range: Option<i64>, tags
     let file = File::open(config.log_file.to_string()).expect("Unable to open the log file");
     let reader = BufReader::new(file);
 
-    println!("Date\t\tTime\t\tContent\t\tTags");
+    println!("Date\t\tTime\t\tTags\t\tContent");
     println!("----\t\t----\t\t-------\t\t----");
 
     for line in reader.lines() {
@@ -40,8 +40,8 @@ pub fn list_logs(config: &Config, date: Option<String>, range: Option<i64>, tags
             "{}\t{}\t{}\t{}",
             log_entry.timestamp.format("%Y-%m-%d"),
             log_entry.timestamp.format("%H:%M:%S"),
+            log_entry.tags.join(", "),
             log_entry.content,
-            log_entry.tags.join(", ")
         );
     }
 }
