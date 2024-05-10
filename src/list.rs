@@ -1,10 +1,11 @@
+use crate::config::Config;
 use crate::log_entry::LogEntry;
 use chrono::{Local, NaiveDate};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-pub fn list_logs(date: Option<String>, range: Option<i64>, tags: Vec<String>) {
-    let file = File::open("action_log.json").expect("Unable to open the log file");
+pub fn list_logs(config: &Config, date: Option<String>, range: Option<i64>, tags: Vec<String>) {
+    let file = File::open(config.log_file.to_string()).expect("Unable to open the log file");
     let reader = BufReader::new(file);
 
     println!("Date\t\tTime\t\tContent\t\tTags");

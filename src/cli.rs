@@ -1,9 +1,10 @@
+use crate::config::Config;
 use clap::{App, Arg, SubCommand};
 
 use crate::list;
 use crate::logger;
 
-pub fn run() {
+pub fn run(config: &Config) {
     let matches = App::new("Action Logger")
         .version("0.1.0")
         .author("Your Name")
@@ -66,7 +67,7 @@ pub fn run() {
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty())
                 .collect();
-            logger::log_action(content, tags);
+            logger::log_action(&config, content, tags);
         }
         ("list", Some(sub_matches)) => {
             let date = sub_matches.value_of("date").map(|d| d.to_string());
@@ -80,7 +81,7 @@ pub fn run() {
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty())
                 .collect();
-            list::list_logs(date, range, tags);
+            list::list_logs(&config, date, range, tags);
         }
         _ => {
             println!("No subcommand was used");
