@@ -1,18 +1,9 @@
 use clap::{App, Arg, SubCommand};
 
-pub enum Command {
-    Log {
-        content: String,
-        tags: Vec<String>,
-    },
-    List {
-        date: Option<String>,
-        range: Option<i64>,
-        tags: Vec<String>,
-    },
-}
+use crate::list;
+use crate::logger;
 
-pub fn parse_args() -> Command {
+pub fn run() {
     let matches = App::new("Action Logger")
         .version("0.1.0")
         .author("Your Name")
@@ -75,7 +66,7 @@ pub fn parse_args() -> Command {
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty())
                 .collect();
-            Command::Log { content, tags }
+            logger::log_action(content, tags);
         }
         ("list", Some(sub_matches)) => {
             let date = sub_matches.value_of("date").map(|d| d.to_string());
@@ -89,8 +80,10 @@ pub fn parse_args() -> Command {
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty())
                 .collect();
-            Command::List { date, range, tags }
+            list::list_logs(date, range, tags);
         }
-        _ => panic!("Invalid command"),
+        _ => {
+            println!("No subcommand was used");
+        }
     }
 }
