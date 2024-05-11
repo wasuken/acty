@@ -5,6 +5,7 @@ mod config;
 mod list;
 mod log_entry;
 mod logger;
+mod markdown;
 
 fn main() {
     let config_path = match home_dir() {

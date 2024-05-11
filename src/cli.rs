@@ -3,6 +3,7 @@ use clap::{App, Arg, SubCommand};
 
 use crate::list;
 use crate::logger;
+use crate::markdown;
 
 pub fn run(config: &Config) {
     let matches = App::new("Action Logger")
@@ -55,6 +56,34 @@ pub fn run(config: &Config) {
                         .takes_value(true),
                 ),
         )
+        .subcommand(
+            SubCommand::with_name("mdt")
+                .about("output log entries in markdown table format")
+                .arg(
+                    Arg::with_name("date")
+                        .short("d")
+                        .long("date")
+                        .value_name("DATE")
+                        .help("Filter logs by date (YYYY-MM-DD)")
+                        .takes_value(true),
+                )
+                .arg(
+                    Arg::with_name("range")
+                        .short("r")
+                        .long("range")
+                        .value_name("DAYS")
+                        .help("Filter logs by date range (in days)")
+                        .takes_value(true),
+                )
+                .arg(
+                    Arg::with_name("tags")
+                        .short("t")
+                        .long("tags")
+                        .value_name("TAGS")
+                        .help("Filter logs by tags (comma-separated)")
+                        .takes_value(true),
+                ),
+        )
         .get_matches();
 
     match matches.subcommand() {
@@ -82,6 +111,20 @@ pub fn run(config: &Config) {
                 .filter(|s| !s.is_empty())
                 .collect();
             list::list_logs(&config, date, range, tags);
+        }
+        ("mdt", Some(sub_matches)) => {
+            let date = sub_matches.value_of("date").map(|d| d.to_string());
+            let range = sub_matches
+                .value_of("range")
+                .map(|r| r.parse::<i64>().expect("Invalid range"));
+            let tags: Vec<String> = sub_matches
+                .value_of("tags")
+                .unwrap_or("")
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
+            markdown::output_markdown_table(&config, date, range, tags);
         }
         _ => {
             println!("No subcommand was used");
