@@ -6,6 +6,7 @@ mod list;
 mod log_entry;
 mod logger;
 mod markdown;
+mod util;
 
 fn main() {
     let config_path = match home_dir() {

@@ -1,5 +1,6 @@
 use crate::config::Config;
 use crate::log_entry::LogEntry;
+use crate::util::sort_tags;
 use chrono::{Local, NaiveDate};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -35,12 +36,13 @@ pub fn list_logs(config: &Config, date: Option<String>, range: Option<i64>, tags
         if !tags.is_empty() && !tags.iter().all(|t| log_entry.tags.contains(t)) {
             continue;
         }
+        let sorted_tags = sort_tags(log_entry.tags.clone());
 
         println!(
-            "{}\t{}\t{}\t{}",
+            "{}\t{}\t{}\n> {}",
             log_entry.timestamp.format("%Y-%m-%d"),
             log_entry.timestamp.format("%H:%M:%S"),
-            log_entry.tags.join(", "),
+            sorted_tags.join(", "),
             log_entry.content,
         );
     }
