@@ -9,7 +9,7 @@ pub fn list_logs(config: &Config, date: Option<String>, range: Option<i64>, tags
     let file = File::open(config.log_file.to_string()).expect("Unable to open the log file");
     let reader = BufReader::new(file);
 
-    println!("Date\t\tTime\t\tTags\t\tContent");
+    println!("Date\t\tTime\t\tTags");
     println!("----\t\t----\t\t-------\t\t----");
 
     for line in reader.lines() {
@@ -39,7 +39,7 @@ pub fn list_logs(config: &Config, date: Option<String>, range: Option<i64>, tags
         let sorted_tags = sort_tags(log_entry.tags.clone());
 
         println!(
-            "{}\t{}\t{}\n> {}",
+            "{}\t{}\t{}\nContent> {}",
             log_entry.timestamp.format("%Y-%m-%d"),
             log_entry.timestamp.format("%H:%M:%S"),
             sorted_tags.join(", "),
