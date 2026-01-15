@@ -101,6 +101,21 @@ pub fn run(config: &Config) {
                 ),
         )
         .subcommand(
+            SubCommand::with_name("copy")
+                .about("Copy a log entry to a new entry with current timestamp")
+                .arg(
+                    Arg::with_name("id")
+                        .help("The ID of the log entry to copy")
+                        .required(true)
+                        .index(1),
+                )
+                .arg(
+                    Arg::with_name("content")
+                        .help("Optional new content for the copied entry")
+                        .index(2),
+                ),
+        )
+        .subcommand(
             SubCommand::with_name("tags")
                 .about("List all used tags and their usage counts"),
         )
@@ -173,12 +188,18 @@ pub fn run(config: &Config) {
             let ids_result: Result<Vec<usize>, _> = sub_matches
                 .values_of("id")
                 .unwrap()
-                .map(|id_str| id_str.parse::<usize>())
+                .map(|id_str| {
+                    if id_str == "last" {
+                        Ok(logger::get_log_count(&config))
+                    } else {
+                        id_str.parse::<usize>()
+                    }
+                })
                 .collect();
 
             match ids_result {
                 Ok(ids) => logger::delete_logs(&config, ids),
-                Err(_) => eprintln!("Invalid ID found. Please provide numeric IDs."),
+                Err(_) => eprintln!("Invalid ID found. Please provide numeric IDs or 'last'."),
             }
         }
         ("edit", Some(sub_matches)) => {
@@ -191,8 +212,29 @@ pub fn run(config: &Config) {
                     .collect()
             });
 
-            match id_str.parse::<usize>() {
+            let id_result = if id_str == "last" {
+                Ok(logger::get_log_count(&config))
+            } else {
+                id_str.parse::<usize>()
+            };
+
+            match id_result {
                 Ok(id) => logger::update_log(&config, id, content, tags),
+                Err(_) => eprintln!("Invalid ID: {}", id_str),
+            }
+        }
+        ("copy", Some(sub_matches)) => {
+            let id_str = sub_matches.value_of("id").unwrap();
+            let content = sub_matches.value_of("content").map(|s| s.to_string());
+
+            let id_result = if id_str == "last" {
+                Ok(logger::get_log_count(&config))
+            } else {
+                id_str.parse::<usize>()
+            };
+
+            match id_result {
+                Ok(id) => logger::copy_log(&config, id, content),
                 Err(_) => eprintln!("Invalid ID: {}", id_str),
             }
         }

@@ -68,6 +68,15 @@ pub fn delete_logs(config: &Config, ids: Vec<usize>) {
     println!("{} log entry(ies) deleted successfully.", deleted_count);
 }
 
+pub fn get_log_count(config: &Config) -> usize {
+    let path = std::path::Path::new(&config.log_file);
+    if !path.exists() {
+        return 0;
+    }
+    let contents = std::fs::read_to_string(path).unwrap_or_default();
+    contents.lines().count()
+}
+
 pub fn update_log(config: &Config, index: usize, new_content: String, new_tags: Option<Vec<String>>) {
     let path = std::path::Path::new(&config.log_file);
     if !path.exists() {
@@ -111,6 +120,41 @@ pub fn update_log(config: &Config, index: usize, new_content: String, new_tags: 
     }
 
     println!("Log entry {} updated successfully.", index);
+}
+
+pub fn copy_log(config: &Config, index: usize, new_content: Option<String>) {
+    let path = std::path::Path::new(&config.log_file);
+    if !path.exists() {
+        eprintln!("Log file not found.");
+        return;
+    }
+
+    let contents = std::fs::read_to_string(path).expect("Unable to read log file");
+    let lines: Vec<&str> = contents.lines().collect();
+
+    if index == 0 || index > lines.len() {
+        eprintln!("Invalid ID: {}. Use 'list' command to see available IDs.", index);
+        return;
+    }
+
+    let original_entry: LogEntry = serde_json::from_str(lines[index - 1]).expect("Unable to deserialize log entry");
+    
+    let log_entry = LogEntry {
+        timestamp: Local::now(),
+        content: new_content.unwrap_or(original_entry.content),
+        tags: original_entry.tags,
+    };
+
+    let mut file = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open(config.log_file.to_string())
+        .expect("Unable to open or create the log file");
+
+    let serialized = serde_json::to_string(&log_entry).expect("Unable to serialize the log entry");
+    writeln!(file, "{}", serialized).expect("Unable to write to the log file");
+
+    println!("Log entry {} copied to new entry successfully!", index);
 }
 
 #[cfg(test)]
@@ -226,6 +270,43 @@ mod tests {
         assert_eq!(log_entries_2[0].content, "New Content 2");
         // Tags should remain unchanged from previous update
         assert!(log_entries_2[0].tags.contains(&"new_tag1".to_string()));
+
+        fs::remove_file(test_json_path).unwrap();
+    }
+
+    #[test]
+    fn test_copy_log() {
+        let test_json_path = "action_log_copy_test.json";
+        let config = Config {
+            log_file: test_json_path.to_string(),
+        };
+
+        if std::path::Path::new(test_json_path).exists() {
+            fs::remove_file(test_json_path).unwrap();
+        }
+
+        log_action(&config, "Original Content".to_string(), vec!["tag1".to_string()]);
+
+        // Copy with same content
+        copy_log(&config, 1, None);
+
+        let contents = fs::read_to_string(test_json_path).unwrap();
+        let entries: Vec<LogEntry> = contents.lines().map(|l| serde_json::from_str(l).unwrap()).collect();
+
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[1].content, "Original Content");
+        assert_eq!(entries[1].tags, vec!["tag1".to_string()]);
+        assert!(entries[1].timestamp > entries[0].timestamp);
+
+        // Copy with new content
+        copy_log(&config, 1, Some("New Content".to_string()));
+        
+        let contents_2 = fs::read_to_string(test_json_path).unwrap();
+        let entries_2: Vec<LogEntry> = contents_2.lines().map(|l| serde_json::from_str(l).unwrap()).collect();
+
+        assert_eq!(entries_2.len(), 3);
+        assert_eq!(entries_2[2].content, "New Content");
+        assert_eq!(entries_2[2].tags, vec!["tag1".to_string()]); // Tags preserved
 
         fs::remove_file(test_json_path).unwrap();
     }
