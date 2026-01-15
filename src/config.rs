@@ -1,5 +1,6 @@
 use serde::Deserialize;
 use std::fs;
+use std::path::PathBuf;
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -16,8 +17,12 @@ impl Config {
 
 impl Default for Config {
     fn default() -> Self {
+        let log_file = dirs::data_local_dir()
+            .map(|path| path.join("acty").join("action_log.json"))
+            .unwrap_or_else(|| PathBuf::from("action_log.json"));
+
         Config {
-            log_file: "action_log.json".to_string(),
+            log_file: log_file.to_string_lossy().into_owned(),
         }
     }
 }

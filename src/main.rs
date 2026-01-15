@@ -6,6 +6,7 @@ mod list;
 mod log_entry;
 mod logger;
 mod markdown;
+mod tags;
 mod util;
 
 fn main() {
@@ -26,14 +27,6 @@ fn main() {
         },
         None => {
             eprintln!("** Warning invalid configuration file path **");
-            config::Config::default()
-        }
-    };
-
-    match config::Config::from_file(config_path.to_str().unwrap()) {
-        Ok(config) => config,
-        Err(err) => {
-            eprintln!("** Warning loading configuration: {} **", err);
             config::Config::default()
         }
     };
