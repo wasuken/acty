@@ -35,7 +35,7 @@ pub fn log_action(config: &Config, content: String, tags: Vec<String>) {
     println!("Log entry added successfully!");
 }
 
-pub fn delete_log(config: &Config, index: usize) {
+pub fn delete_logs(config: &Config, ids: Vec<usize>) {
     let path = std::path::Path::new(&config.log_file);
     if !path.exists() {
         eprintln!("Log file not found.");
@@ -45,19 +45,27 @@ pub fn delete_log(config: &Config, index: usize) {
     let contents = std::fs::read_to_string(path).expect("Unable to read log file");
     let mut lines: Vec<&str> = contents.lines().collect();
 
-    if index == 0 || index > lines.len() {
-        eprintln!("Invalid ID: {}. Use 'list' command to see available IDs.", index);
-        return;
-    }
+    // Sort IDs in descending order to prevent shifting indices from affecting subsequent deletions
+    let mut sorted_ids = ids;
+    sorted_ids.sort_by(|a, b| b.cmp(a));
+    sorted_ids.dedup(); // Remove duplicates
 
-    lines.remove(index - 1);
+    let mut deleted_count = 0;
+    for index in sorted_ids {
+        if index == 0 || index > lines.len() {
+            eprintln!("Skipping invalid ID: {}", index);
+            continue;
+        }
+        lines.remove(index - 1);
+        deleted_count += 1;
+    }
 
     let mut file = std::fs::File::create(path).expect("Unable to open log file for writing");
     for line in lines {
         writeln!(file, "{}", line).expect("Unable to write to log file");
     }
 
-    println!("Log entry {} deleted successfully.", index);
+    println!("{} log entry(ies) deleted successfully.", deleted_count);
 }
 
 pub fn update_log(config: &Config, index: usize, new_content: String, new_tags: Option<Vec<String>>) {
@@ -136,7 +144,7 @@ mod tests {
     }
 
     #[test]
-    fn test_delete_log() {
+    fn test_delete_logs() {
         let test_json_path = "action_log_delete_test.json";
         let config = Config {
             log_file: test_json_path.to_string(),
@@ -150,9 +158,10 @@ mod tests {
         log_action(&config, "Entry 1".to_string(), vec![]);
         log_action(&config, "Entry 2".to_string(), vec![]);
         log_action(&config, "Entry 3".to_string(), vec![]);
+        log_action(&config, "Entry 4".to_string(), vec![]);
 
-        // Delete the second entry (index 2)
-        delete_log(&config, 2);
+        // Delete entries 2 and 4
+        delete_logs(&config, vec![2, 4]);
 
         let file_content = fs::read_to_string(test_json_path).unwrap();
         let log_entries: Vec<LogEntry> = file_content
@@ -165,7 +174,7 @@ mod tests {
         assert_eq!(log_entries[1].content, "Entry 3");
 
         // Try deleting invalid index
-        delete_log(&config, 99);
+        delete_logs(&config, vec![99]);
         let file_content_after_invalid = fs::read_to_string(test_json_path).unwrap();
         assert_eq!(file_content, file_content_after_invalid);
 

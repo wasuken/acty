@@ -67,11 +67,12 @@ pub fn run(config: &Config) {
         )
         .subcommand(
             SubCommand::with_name("delete")
-                .about("Delete a log entry by ID")
+                .about("Delete log entries by ID")
                 .arg(
                     Arg::with_name("id")
-                        .help("The ID of the log entry to delete")
+                        .help("The IDs of the log entries to delete (space separated)")
                         .required(true)
+                        .multiple(true)
                         .index(1),
                 ),
         )
@@ -169,10 +170,15 @@ pub fn run(config: &Config) {
             list::list_logs(&config, date, range, tags, search);
         }
         ("delete", Some(sub_matches)) => {
-            let id_str = sub_matches.value_of("id").unwrap();
-            match id_str.parse::<usize>() {
-                Ok(id) => logger::delete_log(&config, id),
-                Err(_) => eprintln!("Invalid ID: {}", id_str),
+            let ids_result: Result<Vec<usize>, _> = sub_matches
+                .values_of("id")
+                .unwrap()
+                .map(|id_str| id_str.parse::<usize>())
+                .collect();
+
+            match ids_result {
+                Ok(ids) => logger::delete_logs(&config, ids),
+                Err(_) => eprintln!("Invalid ID found. Please provide numeric IDs."),
             }
         }
         ("edit", Some(sub_matches)) => {
