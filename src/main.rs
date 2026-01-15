@@ -20,15 +20,13 @@ fn main() {
     let config = match config_path.to_str() {
         Some(path) => match config::Config::from_file(path) {
             Ok(config) => config,
-            Err(err) => {
-                eprintln!("** Warning loading configuration: {} **", err);
+            Err(_) => {
+                // If file not found or error, use default without noise.
+                // Assuming most users won't have a config file initially.
                 config::Config::default()
             }
         },
-        None => {
-            eprintln!("** Warning invalid configuration file path **");
-            config::Config::default()
-        }
+        None => config::Config::default(),
     };
 
     cli::run(&config);
