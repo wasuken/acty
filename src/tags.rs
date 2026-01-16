@@ -4,8 +4,8 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-pub fn list_tags(config: &Config) {
-    let tag_counts = get_tag_counts(config);
+pub fn list_tags(config: &Config, use_archive: bool) {
+    let tag_counts = get_tag_counts(config, use_archive);
 
     if tag_counts.is_empty() {
         println!("No tags found.");
@@ -31,8 +31,13 @@ pub fn list_tags(config: &Config) {
     }
 }
 
-fn get_tag_counts(config: &Config) -> HashMap<String, usize> {
-    let path = std::path::Path::new(&config.log_file);
+fn get_tag_counts(config: &Config, use_archive: bool) -> HashMap<String, usize> {
+    let path = if use_archive {
+        std::path::Path::new(&config.log_file).with_file_name("archive.json")
+    } else {
+        std::path::PathBuf::from(&config.log_file)
+    };
+    
     if !path.exists() {
         return HashMap::new();
     }
@@ -74,7 +79,7 @@ mod tests {
         log_action(&config, "Log 2".to_string(), vec!["work".to_string(), "meeting".to_string()]);
         log_action(&config, "Log 3".to_string(), vec!["rest".to_string()]);
 
-        let counts = get_tag_counts(&config);
+        let counts = get_tag_counts(&config, false);
         
         assert_eq!(*counts.get("work").unwrap(), 2);
         assert_eq!(*counts.get("urgent").unwrap(), 1);

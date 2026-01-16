@@ -157,6 +157,55 @@ pub fn copy_log(config: &Config, index: usize, new_content: Option<String>) {
     println!("Log entry {} copied to new entry successfully!", index);
 }
 
+pub fn archive_logs(config: &Config, days: i64) {
+    let path = std::path::Path::new(&config.log_file);
+    if !path.exists() {
+        println!("No logs to archive.");
+        return;
+    }
+
+    let contents = std::fs::read_to_string(path).expect("Unable to read log file");
+    let mut keep_logs: Vec<String> = Vec::new();
+    let mut archive_logs: Vec<String> = Vec::new();
+
+    let cutoff_date = Local::now().date_naive() - chrono::Duration::days(days);
+
+    for line in contents.lines() {
+        if let Ok(entry) = serde_json::from_str::<LogEntry>(line) {
+            if entry.timestamp.date_naive() < cutoff_date {
+                archive_logs.push(line.to_string());
+            } else {
+                keep_logs.push(line.to_string());
+            }
+        }
+    }
+
+    if archive_logs.is_empty() {
+        println!("No logs found older than {} days.", days);
+        return;
+    }
+
+    // Append to archive file
+    let archive_path = path.with_file_name("archive.json");
+    let mut archive_file = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open(archive_path)
+        .expect("Unable to open archive file");
+
+    for line in &archive_logs {
+        writeln!(archive_file, "{}", line).expect("Unable to write to archive file");
+    }
+
+    // Overwrite main log file
+    let mut main_file = std::fs::File::create(path).expect("Unable to open log file for writing");
+    for line in &keep_logs {
+        writeln!(main_file, "{}", line).expect("Unable to write to log file");
+    }
+
+    println!("Archived {} logs older than {} days.", archive_logs.len(), days);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -309,5 +358,55 @@ mod tests {
         assert_eq!(entries_2[2].tags, vec!["tag1".to_string()]); // Tags preserved
 
         fs::remove_file(test_json_path).unwrap();
+    }
+
+    #[test]
+    fn test_archive_logs() {
+        let test_dir = std::env::temp_dir().join("acty_test_archive");
+        std::fs::create_dir_all(&test_dir).unwrap();
+        let log_path = test_dir.join("action_log.json");
+        let archive_path = test_dir.join("archive.json");
+        
+        let config = Config {
+            log_file: log_path.to_string_lossy().to_string(),
+        };
+
+        // Create logs manually
+        let old_date = Local::now() - chrono::Duration::days(10);
+        let new_date = Local::now();
+
+        let old_entry = LogEntry {
+            timestamp: old_date,
+            content: "Old Log".to_string(),
+            tags: vec![],
+        };
+        let new_entry = LogEntry {
+            timestamp: new_date,
+            content: "New Log".to_string(),
+            tags: vec![],
+        };
+
+        {
+            let mut file = std::fs::File::create(&log_path).unwrap();
+            writeln!(file, "{}", serde_json::to_string(&old_entry).unwrap()).unwrap();
+            writeln!(file, "{}", serde_json::to_string(&new_entry).unwrap()).unwrap();
+        }
+
+        // Archive logs older than 7 days
+        archive_logs(&config, 7);
+
+        // Check main log file (should only have new entry)
+        let main_contents = std::fs::read_to_string(&log_path).unwrap();
+        let main_lines: Vec<&str> = main_contents.lines().collect();
+        assert_eq!(main_lines.len(), 1);
+        assert!(main_lines[0].contains("New Log"));
+
+        // Check archive file (should have old entry)
+        let archive_contents = std::fs::read_to_string(&archive_path).unwrap();
+        let archive_lines: Vec<&str> = archive_contents.lines().collect();
+        assert_eq!(archive_lines.len(), 1);
+        assert!(archive_lines[0].contains("Old Log"));
+
+        std::fs::remove_dir_all(test_dir).unwrap();
     }
 }

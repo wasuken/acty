@@ -63,6 +63,12 @@ pub fn run(config: &Config) {
                         .value_name("KEYWORD")
                         .help("Filter logs by keyword")
                         .takes_value(true),
+                )
+                .arg(
+                    Arg::with_name("archive")
+                        .short("a")
+                        .long("archive")
+                        .help("Read from archive file instead of main log"),
                 ),
         )
         .subcommand(
@@ -117,7 +123,13 @@ pub fn run(config: &Config) {
         )
         .subcommand(
             SubCommand::with_name("tags")
-                .about("List all used tags and their usage counts"),
+                .about("List all used tags and their usage counts")
+                .arg(
+                    Arg::with_name("archive")
+                        .short("a")
+                        .long("archive")
+                        .help("Read from archive file instead of main log"),
+                ),
         )
         .subcommand(
             SubCommand::with_name("mdt")
@@ -153,6 +165,21 @@ pub fn run(config: &Config) {
                         .value_name("KEYWORD")
                         .help("Filter logs by keyword")
                         .takes_value(true),
+                )
+                .arg(
+                    Arg::with_name("archive")
+                        .short("a")
+                        .long("archive")
+                        .help("Read from archive file instead of main log"),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("archive")
+                .about("Move old logs to archive file")
+                .arg(
+                    Arg::with_name("days")
+                        .help("Archive logs older than N days (default: 7)")
+                        .index(1),
                 ),
         )
         .get_matches();
@@ -182,7 +209,8 @@ pub fn run(config: &Config) {
                 .filter(|s| !s.is_empty())
                 .collect();
             let search = sub_matches.value_of("search").map(|s| s.to_string());
-            list::list_logs(&config, date, range, tags, search);
+            let use_archive = sub_matches.is_present("archive");
+            list::list_logs(&config, date, range, tags, search, use_archive);
         }
         ("delete", Some(sub_matches)) => {
             let ids_result: Result<Vec<usize>, _> = sub_matches
@@ -238,8 +266,17 @@ pub fn run(config: &Config) {
                 Err(_) => eprintln!("Invalid ID: {}", id_str),
             }
         }
-        ("tags", Some(_)) => {
-            tags::list_tags(&config);
+        ("tags", Some(sub_matches)) => {
+            let use_archive = sub_matches.is_present("archive");
+            tags::list_tags(&config, use_archive);
+        }
+        ("archive", Some(sub_matches)) => {
+            let days = sub_matches
+                .value_of("days")
+                .unwrap_or("7")
+                .parse::<i64>()
+                .expect("Invalid days. Please provide a number.");
+            logger::archive_logs(&config, days);
         }
         ("mdt", Some(sub_matches)) => {
             let date = sub_matches.value_of("date").map(|d| d.to_string());
@@ -254,7 +291,8 @@ pub fn run(config: &Config) {
                 .filter(|s| !s.is_empty())
                 .collect();
             let search = sub_matches.value_of("search").map(|s| s.to_string());
-            markdown::output_markdown_table(&config, date, range, tags, search);
+            let use_archive = sub_matches.is_present("archive");
+            markdown::output_markdown_table(&config, date, range, tags, search, use_archive);
         }
         _ => {
             println!("No subcommand was used");

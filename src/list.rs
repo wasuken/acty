@@ -10,8 +10,21 @@ pub fn list_logs(
     range: Option<i64>,
     tags: Vec<String>,
     search: Option<String>,
+    use_archive: bool,
 ) {
-    let file = File::open(config.log_file.to_string()).expect("Unable to open the log file");
+    let path = if use_archive {
+        std::path::Path::new(&config.log_file).with_file_name("archive.json")
+    } else {
+        std::path::PathBuf::from(&config.log_file)
+    };
+
+    let file = match File::open(&path) {
+        Ok(f) => f,
+        Err(_) => {
+            println!("No logs found.");
+            return;
+        }
+    };
     let reader = BufReader::new(file);
 
     println!("ID\tTime\t\tGap\t\tTags\t\tContent");
